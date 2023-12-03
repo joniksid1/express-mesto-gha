@@ -1,13 +1,29 @@
 const express = require('express');
+
+const { json } = require('express');
+
 const mongoose = require('mongoose');
-// Слушаем 3000 порт
-const { PORT = 3000 } = process.env;
+
+require('dotenv').config();
+
+const { userRouter } = require('./routes/users');
+
+const { PORT, MONGO_URL } = process.env;
 
 const app = express();
 
-mongoose.connect('mongodb://localhost:27017/mestodb');
+app.use(json());
 
-app.listen(PORT, () => {
-    // Если всё работает, консоль покажет, какой порт приложение слушает
-    console.log(`App listening on port ${PORT}`)
-})
+app.use((req, res, next) => {
+  req.user = {
+    _id: '656c8d540750056ac41f9001',
+  };
+
+  next();
+});
+
+app.use('/users', userRouter);
+
+mongoose.connect(MONGO_URL);
+
+app.listen(PORT);
