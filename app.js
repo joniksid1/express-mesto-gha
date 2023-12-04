@@ -8,6 +8,8 @@ require('dotenv').config();
 
 const { userRouter } = require('./routes/users');
 
+const { cardRouter } = require('./routes/cards');
+
 const { PORT, MONGO_URL } = process.env;
 
 const app = express();
@@ -23,6 +25,8 @@ app.use((req, res, next) => {
 });
 
 app.use('/users', userRouter);
+
+app.use('/cards', cardRouter);
 
 mongoose.connect(MONGO_URL);
 
