@@ -28,6 +28,12 @@ app.use('/users', userRouter);
 
 app.use('/cards', cardRouter);
 
+app.use((req, res, next) => {
+  res.status(404).send({ message: 'Страница не найдена' });
+
+  next();
+});
+
 mongoose.connect(MONGO_URL);
 
 app.listen(PORT);

@@ -57,6 +57,8 @@ module.exports.likeCard = async (req, res) => {
     return res.send({ message: 'Лайк успешно добавлен' });
   } catch (e) {
     switch (e.name) {
+      case 'CastError':
+        return res.status(400).send({ message: 'Неверно указан id' });
       case 'NotFoundError':
         return res.status(e.statusCode).send({ message: e.message });
       default:
@@ -78,6 +80,8 @@ module.exports.dislikeCard = async (req, res) => {
     return res.send({ message: 'Лайк успешно удалён' });
   } catch (e) {
     switch (e.name) {
+      case 'CastError':
+        return res.status(400).send({ message: 'Неверно указан id' });
       case 'NotFoundError':
         return res.status(e.statusCode).send({ message: e.message });
       default:

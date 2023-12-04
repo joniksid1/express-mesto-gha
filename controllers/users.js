@@ -52,7 +52,7 @@ module.exports.updateUserData = async (req, res) => {
     const updateUser = await User.findByIdAndUpdate(
       req.user._id,
       { name, about },
-      { new: true },
+      { new: true, runValidators: true },
     );
     if (!updateUser) {
       return res.status(404).send({ message: 'Пользователь не найден' });
@@ -74,12 +74,12 @@ module.exports.updateUserAvatar = async (req, res) => {
     const updateUserAvatar = await User.findByIdAndUpdate(
       req.user._id,
       { avatar },
-      { new: true },
+      { new: true, runValidators: true },
     );
     if (!updateUserAvatar) {
       return res.status(404).send({ message: 'Пользователь не найден' });
     }
-    return res.status(200).send({ message: `Аватар успешно обновлён: ${updateUserAvatar}` });
+    return res.status(200).send({ message: 'Аватар успешно обновлён' });
   } catch (e) {
     switch (e.name) {
       case 'ValidationError':
