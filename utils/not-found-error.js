@@ -1,9 +1,8 @@
 class NotFoundError extends Error {
   constructor({ message }) {
-    super();
+    super(message);
     this.statusCode = 404;
     this.name = 'NotFoundError';
-    this.message = message;
   }
 }
 

@@ -1,12 +1,20 @@
+const {
+  HTTP_STATUS_OK,
+  HTTP_STATUS_CREATED,
+  HTTP_STATUS_BAD_REQUEST,
+  HTTP_STATUS_INTERNAL_SERVER_ERROR,
+} = require('http2').constants;
+const mongoose = require('mongoose');
 const User = require('../models/user');
 const { NotFoundError } = require('../utils/not-found-error');
+const { updateUser } = require('../utils/update-user');
 
 module.exports.getUsers = async (req, res) => {
   try {
     const users = await User.find({});
-    return res.status(200).send(users);
+    return res.status(HTTP_STATUS_OK).send(users);
   } catch (e) {
-    return res.status(500).send({ message: 'Ошибка на стороне сервера', error: e.message });
+    return res.status(HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Ошибка на стороне сервера', error: e.message });
   }
 };
 
@@ -14,78 +22,52 @@ module.exports.getUserById = async (req, res) => {
   try {
     const { id } = req.params;
     const user = await User.findById(id).orFail(() => new NotFoundError({ message: 'Пользователь по указанному ID не найден' }));
-    return res.status(200).send(user);
+    return res.status(HTTP_STATUS_OK).send(user);
   } catch (e) {
-    switch (e.name) {
-      case 'CastError':
-        return res.status(400).send({ message: 'Передан невалидный ID' });
-      case 'NotFoundError':
-        return res.status(e.statusCode).send({ message: e.message });
-      default:
-        return res.status(500).send({ message: 'Ошибка на стороне сервера', error: e.message });
+    if (e instanceof mongoose.Error.CastError) {
+      return res.status(HTTP_STATUS_BAD_REQUEST).send({ message: 'Передан невалидный ID' });
+    } if (e instanceof NotFoundError) {
+      return res.status(e.statusCode).send({ message: e.message });
     }
+    return res.status(HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Ошибка на стороне сервера', error: e.message });
   }
 };
 
 module.exports.createUser = async (req, res) => {
   try {
     const newUser = await User.create(req.body);
-    return res.status(201).send(newUser);
+    return res.status(HTTP_STATUS_CREATED).send(newUser);
   } catch (e) {
-    switch (e.name) {
-      case 'ValidationError':
-        return res.status(400).send({ message: 'Ошибка валидации полей', ...e });
-      case 'MongoServerError':
-        if (e.errorCode === '11000') {
-          return res.status(e.statusCode).send({ message: 'Пользователь уже существует' });
-        }
-        return res.status(500).send({ message: 'Ошибка на стороне сервера' });
-      default:
-        return res.status(500).send({ message: 'Ошибка на стороне сервера', error: e.message });
+    if (e instanceof mongoose.Error.ValidationError) {
+      return res.status(HTTP_STATUS_BAD_REQUEST).send({ message: 'Ошибка валидации полей', ...e });
     }
+    return res.status(HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Ошибка на стороне сервера', error: e.message });
   }
 };
 
 module.exports.updateUserData = async (req, res) => {
   try {
     const { name, about } = req.body;
-    const updateUser = await User.findByIdAndUpdate(
-      req.user._id,
-      { name, about },
-      { new: true, runValidators: true },
-    );
-    if (!updateUser) {
-      return res.status(404).send({ message: 'Пользователь не найден' });
-    }
-    return res.status(200).send(updateUser);
+    const updatedUser = await updateUser(req.user._id, { name, about });
+    return res.status(HTTP_STATUS_OK).send(updatedUser);
   } catch (e) {
-    switch (e.name) {
-      case 'ValidationError':
-        return res.status(400).send({ message: 'Ошибка валидации полей', ...e });
-      default:
-        return res.status(500).send({ message: 'Ошибка на стороне сервера', error: e.message });
-    }
+    if (e instanceof mongoose.Error.ValidationError) {
+      return res.status(HTTP_STATUS_BAD_REQUEST).send({ message: 'Ошибка валидации полей', ...e });
+    } return res.status(HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Ошибка на стороне сервера', error: e.message });
   }
 };
 
 module.exports.updateUserAvatar = async (req, res) => {
   try {
     const { avatar } = req.body;
-    const updateUserAvatar = await User.findByIdAndUpdate(
-      req.user._id,
-      { avatar },
-      { runValidators: true },
-    );
-    if (!updateUserAvatar) {
-      return res.status(404).send({ message: 'Пользователь не найден' });
+    if (!avatar) {
+      return res.status(HTTP_STATUS_BAD_REQUEST).send({ message: 'Указаны неверные данные для поля avatar' });
     }
-    return res.status(200).send({ message: 'Аватар успешно обновлён' });
+    await updateUser(req.user._id, { avatar });
+    return res.status(HTTP_STATUS_OK).send({ message: 'Аватар успешно обновлён' });
   } catch (e) {
-    switch (e.name) {
-      case 'ValidationError':
-        return res.status(400).send({ message: 'Ошибка валидации полей', ...e });
-      default:
-        return res.status(500).send({ message: 'Ошибка на стороне сервера', error: e.message });
-    }
+    if (e instanceof mongoose.Error.ValidationError) {
+      return res.status(HTTP_STATUS_BAD_REQUEST).send({ message: 'Ошибка валидации полей', ...e });
+    } return res.status(HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Ошибка на стороне сервера', error: e.message });
   }
 };

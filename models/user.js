@@ -26,6 +26,7 @@ const userSchema = new mongoose.Schema(
         value: true,
         message: 'Поле avatar является обязательным',
       },
+      minlength: [5, 'Минимальная длина 5 символов'],
     },
   },
   {
