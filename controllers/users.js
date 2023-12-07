@@ -60,9 +60,6 @@ module.exports.updateUserData = async (req, res) => {
 module.exports.updateUserAvatar = async (req, res) => {
   try {
     const { avatar } = req.body;
-    if (!avatar) {
-      return res.status(HTTP_STATUS_BAD_REQUEST).send({ message: 'Указаны неверные данные для поля avatar' });
-    }
     await updateUser(req.user._id, { avatar });
     return res.status(HTTP_STATUS_OK).send({ message: 'Аватар успешно обновлён' });
   } catch (e) {
