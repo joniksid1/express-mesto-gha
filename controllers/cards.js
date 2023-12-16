@@ -1,57 +1,61 @@
 const {
   HTTP_STATUS_OK,
-  HTTP_STATUS_BAD_REQUEST,
-  HTTP_STATUS_NOT_FOUND,
-  HTTP_STATUS_INTERNAL_SERVER_ERROR,
 } = require('http2').constants;
 const mongoose = require('mongoose');
 const Card = require('../models/card');
-const { NotFoundError } = require('../utils/not-found-error');
+const { NotFoundError } = require('../utils/errors/not-found-error');
+const { CastError } = require('../utils/errors/cast-error');
+const { ForbiddenError } = require('../utils/errors/forbidden-error');
 
-module.exports.getCards = async (req, res) => {
+module.exports.getCards = async (req, res, next) => {
   try {
     const cards = await Card.find({});
-    return res.status(HTTP_STATUS_OK).send(cards);
+    res.status(HTTP_STATUS_OK).send(cards);
   } catch (e) {
-    return res.status(HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Ошибка на стороне сервера', error: e.message });
+    next(e);
   }
 };
 
-module.exports.createCard = async (req, res) => {
+module.exports.createCard = async (req, res, next) => {
   try {
     const owner = req.user._id;
     const { name, link } = req.body;
     const card = await Card.create({ name, link, owner });
-    return res.send(card);
+    res.send(card);
   } catch (e) {
     if (e instanceof mongoose.Error.ValidationError) {
-      return res.status(HTTP_STATUS_BAD_REQUEST).send({ message: 'Ошибка валидации полей', ...e });
+      next(new CastError({ message: e.message }));
+    } else {
+      next(e);
     }
-    return res.status(HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Ошибка на стороне сервера', error: e.message });
   }
 };
 
-module.exports.deleteCardById = async (req, res) => {
+module.exports.deleteCardById = async (req, res, next) => {
   try {
-    const cardDelete = await Card.findByIdAndDelete(req.params.id);
-    if (!cardDelete) {
-      return res.status(HTTP_STATUS_NOT_FOUND).send({ message: 'Карточка не найдена' });
+    const card = await Card.findById(req.params.id);
+    if (!card) {
+      throw new NotFoundError({ message: 'Карточка не найдена' });
+    } else if (card.owner.toString() !== req.user._id) {
+      throw new ForbiddenError({ message: 'Нельзя удалить карточку другого пользователя' });
+    } else {
+      await Card.findByIdAndDelete(req.params.id);
+      res.send({ message: 'Карточка успешно удалена' });
     }
-    if (cardDelete.owner.toString() !== req.params.id) {
-      throw new Error({ message: 'Нельзя удалить карточку другого пользователя' });
-    }
-    return res.send({ message: 'Карточка успешно удалена' });
   } catch (e) {
     if (e instanceof mongoose.Error.CastError) {
-      return res.status(HTTP_STATUS_BAD_REQUEST).send({ message: 'Передан невалидный ID' });
-    } if (e instanceof NotFoundError) {
-      return res.status(e.statusCode).send({ message: e.message });
+      next(new CastError({ message: e.message }));
+    } else if (e instanceof NotFoundError) {
+      next(e);
+    } else if (e instanceof ForbiddenError) {
+      next(e);
+    } else {
+      next(e);
     }
-    return res.status(HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Ошибка на стороне сервера', error: e.message });
   }
 };
 
-module.exports.likeCard = async (req, res) => {
+module.exports.likeCard = async (req, res, next) => {
   try {
     const cardLike = await Card.findByIdAndUpdate(
       req.params.id,
@@ -59,20 +63,22 @@ module.exports.likeCard = async (req, res) => {
       { new: true },
     );
     if (!cardLike) {
-      return res.status(HTTP_STATUS_NOT_FOUND).send({ message: 'Карточка не найдена' });
+      throw new NotFoundError({ message: 'Карточка не найдена' });
+    } else {
+      res.send({ message: 'Лайк успешно добавлен' });
     }
-    return res.send({ message: 'Лайк успешно добавлен' });
   } catch (e) {
     if (e instanceof mongoose.Error.CastError) {
-      return res.status(HTTP_STATUS_BAD_REQUEST).send({ message: 'Передан невалидный ID' });
-    } if (e instanceof NotFoundError) {
-      return res.status(e.statusCode).send({ message: e.message });
+      next(new CastError({ message: e.message }));
+    } else if (e instanceof NotFoundError) {
+      next(e);
+    } else {
+      next(e);
     }
-    return res.status(HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Ошибка на стороне сервера', error: e.message });
   }
 };
 
-module.exports.dislikeCard = async (req, res) => {
+module.exports.dislikeCard = async (req, res, next) => {
   try {
     const cardDislike = await Card.findByIdAndUpdate(
       req.params.id,
@@ -80,15 +86,17 @@ module.exports.dislikeCard = async (req, res) => {
       { new: true },
     );
     if (!cardDislike) {
-      return res.status(HTTP_STATUS_NOT_FOUND).send({ message: 'Карточка не найдена' });
+      throw new NotFoundError({ message: 'Карточка не найдена' });
+    } else {
+      res.send({ message: 'Лайк успешно удалён' });
     }
-    return res.send({ message: 'Лайк успешно удалён' });
   } catch (e) {
     if (e instanceof mongoose.Error.CastError) {
-      return res.status(HTTP_STATUS_BAD_REQUEST).send({ message: 'Передан невалидный ID' });
-    } if (e instanceof NotFoundError) {
-      return res.status(e.statusCode).send({ message: e.message });
+      next(new CastError({ message: e.message }));
+    } else if (e instanceof NotFoundError) {
+      next(e);
+    } else {
+      next(e);
     }
-    return res.status(HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Ошибка на стороне сервера', error: e.message });
   }
 };

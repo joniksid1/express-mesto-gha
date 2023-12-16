@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { linkRegExp } = require('../constants/constants');
 
 const cardSchema = new mongoose.Schema({
   name: {
@@ -15,6 +16,12 @@ const cardSchema = new mongoose.Schema({
     required: {
       value: true,
       message: 'Поле link является обязательным',
+    },
+    validate: {
+      validator(v) {
+        return linkRegExp.test(v);
+      },
+      message: (props) => `${props.value} не является ссылкой!`,
     },
   },
   owner: {

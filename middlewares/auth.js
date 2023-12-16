@@ -1,31 +1,31 @@
 const jwt = require('jsonwebtoken');
-const {
-  HTTP_STATUS_UNAUTHORIZED,
-} = require('http2').constants;
+const cookieParser = require('cookie-parser');
+const { UnauthorizedError } = require('../utils/errors/unauthorized-error');
 // Дефолтное значение NODE_ENV и JWT_SECRET для прохождения автотестов, т.к. они не видят .env
 const { NODE_ENV = 'production', JWT_SECRET = 'some-secret-key' } = process.env;
 
-module.exports = (req, res, next) => {
-  const { authorization } = req.headers;
+const parseCookie = cookieParser();
 
-  if (!authorization || !authorization.startsWith('Bearer ')) {
-    return res
-      .status(HTTP_STATUS_UNAUTHORIZED)
-      .send({ message: 'Необходима авторизация' });
-  }
+const auth = (req, res, next) => {
+  parseCookie(req, res, () => {
+    const { jwt: token } = req.cookies;
 
-  const token = authorization.replace('Bearer ', '');
-  let payload;
+    if (!token) {
+      next(new UnauthorizedError({ message: 'Необходима авторизация' }));
+    } else {
+      let payload;
 
-  try {
-    payload = jwt.verify(token, NODE_ENV === 'production' ? JWT_SECRET : 'dev-secret');
-  } catch (err) {
-    return res
-      .status(HTTP_STATUS_UNAUTHORIZED)
-      .send({ message: 'Необходима авторизация' });
-  }
+      try {
+        payload = jwt.verify(token, NODE_ENV === 'production' ? JWT_SECRET : 'dev-secret');
+      } catch (e) {
+        next(new UnauthorizedError({ message: e.message }));
+      }
 
-  req.user = payload;
+      req.user = payload;
 
-  next();
+      next();
+    }
+  });
 };
+
+module.exports = auth;

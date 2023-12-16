@@ -1,4 +1,4 @@
-const NotFoundError = require('./not-found-error');
+const NotFoundError = require('./errors/not-found-error');
 const User = require('../models/user');
 
 module.exports.updateUser = async (userId, updateFields) => {

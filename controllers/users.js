@@ -1,57 +1,58 @@
 const {
   HTTP_STATUS_OK,
   HTTP_STATUS_CREATED,
-  HTTP_STATUS_BAD_REQUEST,
-  HTTP_STATUS_INTERNAL_SERVER_ERROR,
-  HTTP_STATUS_UNAUTHORIZED,
 } = require('http2').constants;
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/user');
-const { NotFoundError } = require('../utils/not-found-error');
+const { NotFoundError } = require('../utils/errors/not-found-error');
+const { ConflictError } = require('../utils/errors/conflict-error');
+const { UnauthorizedError } = require('../utils/errors/unauthorized-error');
+const { CastError } = require('../utils/errors/cast-error');
 const { updateUser } = require('../utils/update-user');
 // Дефолтное значение NODE_ENV и JWT_SECRET для прохождения автотестов, т.к. они не видят .env
 const { NODE_ENV = 'production', JWT_SECRET = 'some-secret-key' } = process.env;
 
-module.exports.getUsers = async (req, res) => {
+module.exports.getUsers = async (req, res, next) => {
   try {
     const users = await User.find({});
-    return res.status(HTTP_STATUS_OK).send(users);
+    res.status(HTTP_STATUS_OK).send(users);
   } catch (e) {
-    return res.status(HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Ошибка на стороне сервера', error: e.message });
+    next(e);
   }
 };
 
-module.exports.getUserById = async (req, res) => {
+module.exports.getUserById = async (req, res, next) => {
   try {
     const { id } = req.params;
     const user = await User.findById(id).orFail(() => new NotFoundError({ message: 'Пользователь по указанному ID не найден' }));
-    return res.status(HTTP_STATUS_OK).send(user);
+    res.status(HTTP_STATUS_OK).send(user);
   } catch (e) {
     if (e instanceof mongoose.Error.CastError) {
-      return res.status(HTTP_STATUS_BAD_REQUEST).send({ message: 'Передан невалидный ID' });
+      next(new CastError({ message: e.message }));
     } if (e instanceof NotFoundError) {
-      return res.status(e.statusCode).send({ message: e.message });
+      res.status(e.statusCode).send({ message: e.message });
+    } else {
+      next(e);
     }
-    return res.status(HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Ошибка на стороне сервера', error: e.message });
   }
 };
 
-module.exports.getCurrenUser = async (req, res) => {
+module.exports.getCurrentUser = async (req, res, next) => {
   try {
     const currentUser = await User.findOne({ _id: req.user._id });
-
-    return res.send(currentUser);
+    res.send(currentUser);
   } catch (e) {
     if (e instanceof NotFoundError) {
-      return res.status(e.statusCode).send({ message: e.message });
+      next(new NotFoundError({ message: 'Пользователь не найден' }));
+    } else {
+      next(e);
     }
-    return res.status(HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Ошибка на стороне сервера', error: e.message });
   }
 };
 
-module.exports.createUser = async (req, res) => {
+module.exports.createUser = async (req, res, next) => {
   try {
     const {
       name, about, avatar, email, password,
@@ -65,41 +66,47 @@ module.exports.createUser = async (req, res) => {
       about,
       avatar,
     });
-
-    return res.status(HTTP_STATUS_CREATED).send(user);
+    res.status(HTTP_STATUS_CREATED).send(user);
   } catch (e) {
-    if (e instanceof mongoose.Error.ValidationError) {
-      return res.status(HTTP_STATUS_BAD_REQUEST).send({ message: 'Ошибка валидации полей', ...e });
+    if (e.code === 11000) {
+      next(new ConflictError({ message: 'Пользователь уже существует' }));
+    } else if (e instanceof mongoose.Error.ValidationError) {
+      next(new CastError({ message: e.message }));
+    } else {
+      next(e);
     }
-    return res.status(HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Ошибка на стороне сервера', error: e.message });
   }
 };
 
-module.exports.updateUserData = async (req, res) => {
+module.exports.updateUserData = async (req, res, next) => {
   try {
     const { name, about } = req.body;
     const updatedUser = await updateUser(req.user._id, { name, about });
-    return res.status(HTTP_STATUS_OK).send(updatedUser);
+    res.status(HTTP_STATUS_OK).send(updatedUser);
   } catch (e) {
     if (e instanceof mongoose.Error.ValidationError) {
-      return res.status(HTTP_STATUS_BAD_REQUEST).send({ message: 'Ошибка валидации полей', ...e });
-    } return res.status(HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Ошибка на стороне сервера', error: e.message });
+      next(new CastError({ message: e.message }));
+    } else {
+      next(e);
+    }
   }
 };
 
-module.exports.updateUserAvatar = async (req, res) => {
+module.exports.updateUserAvatar = async (req, res, next) => {
   try {
     const { avatar } = req.body;
     await updateUser(req.user._id, { avatar });
-    return res.status(HTTP_STATUS_OK).send({ message: 'Аватар успешно обновлён' });
+    res.status(HTTP_STATUS_OK).send({ message: 'Аватар успешно обновлён' });
   } catch (e) {
     if (e instanceof mongoose.Error.ValidationError) {
-      return res.status(HTTP_STATUS_BAD_REQUEST).send({ message: 'Ошибка валидации полей', ...e });
-    } return res.status(HTTP_STATUS_INTERNAL_SERVER_ERROR).send({ message: 'Ошибка на стороне сервера', error: e.message });
+      next(new CastError({ message: e.message }));
+    } else {
+      next(e);
+    }
   }
 };
 
-module.exports.login = async (req, res) => {
+module.exports.login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
@@ -116,8 +123,12 @@ module.exports.login = async (req, res) => {
         maxAge: 3600000 * 24 * 7,
         httpOnly: true,
       })
-      .end();
+      .send({ message: 'Авторизация прошла успешно' });
   } catch (e) {
-    res.status(HTTP_STATUS_UNAUTHORIZED).send({ message: e.message });
+    if (e instanceof UnauthorizedError) {
+      next(e);
+    } else {
+      next(e);
+    }
   }
 };
