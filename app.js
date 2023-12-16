@@ -11,14 +11,6 @@ const app = express();
 
 app.use(json());
 
-app.use((req, res, next) => {
-  req.user = {
-    _id: '656c8d540750056ac41f9001',
-  };
-
-  next();
-});
-
 app.use('/', router);
 
 app.use((req, res, next) => {

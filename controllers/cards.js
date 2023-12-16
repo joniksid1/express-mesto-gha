@@ -37,6 +37,9 @@ module.exports.deleteCardById = async (req, res) => {
     if (!cardDelete) {
       return res.status(HTTP_STATUS_NOT_FOUND).send({ message: 'Карточка не найдена' });
     }
+    if (cardDelete.owner.toString() !== req.params.id) {
+      throw new Error({ message: 'Нельзя удалить карточку другого пользователя' });
+    }
     return res.send({ message: 'Карточка успешно удалена' });
   } catch (e) {
     if (e instanceof mongoose.Error.CastError) {
