@@ -13,6 +13,7 @@ const registerValidation = celebrate({
     password: Joi.string().required(),
     name: Joi.string().min(2).max(30),
     about: Joi.string().min(2).max(30),
+    avatar: Joi.string().alphanum(),
   }),
 });
 
@@ -26,6 +27,7 @@ const userDataValidation = celebrate({
   body: Joi.object().keys({
     name: Joi.string().min(2).max(30),
     about: Joi.string().min(2).max(30),
+    avatar: Joi.string(),
   }),
 });
 

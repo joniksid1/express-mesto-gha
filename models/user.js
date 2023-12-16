@@ -73,7 +73,7 @@ userSchema.statics.findUserByCredentials = async function (email, password) {
 
     return user;
   } catch (e) {
-    throw new UnauthorizedError({ message: 'Неправильные почта или пароль' })
+    throw new UnauthorizedError({ message: 'Неправильные почта или пароль' });
   }
 };
 

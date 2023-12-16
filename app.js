@@ -1,9 +1,9 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const { NotFoundError } = require('./utils/errors/not-found-error');
 require('dotenv').config();
-const { router } = require('./routes/root');
 const { errors } = require('celebrate');
+const { router } = require('./routes/root');
+const { NotFoundError } = require('./utils/errors/not-found-error');
 const error = require('./middlewares/error');
 
 const { PORT = '3000', MONGO_URL = 'mongodb://localhost:27017/mestodb' } = process.env;
