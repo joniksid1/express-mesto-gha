@@ -1,4 +1,7 @@
 const { Joi, celebrate } = require('celebrate');
+const { linkRegExp } = require('../constants/constants');
+
+const idSchema = Joi.string().required().alphanum().length(24);
 
 const loginValidation = celebrate({
   body: Joi.object().keys({
@@ -13,13 +16,13 @@ const registerValidation = celebrate({
     password: Joi.string().required(),
     name: Joi.string().min(2).max(30),
     about: Joi.string().min(2).max(30),
-    avatar: Joi.string().alphanum(),
+    avatar: Joi.string().pattern(linkRegExp),
   }),
 });
 
 const userIdValidation = celebrate({
   params: Joi.object().keys({
-    id: Joi.string().required().alphanum().length(24),
+    id: idSchema,
   }),
 });
 
@@ -27,13 +30,13 @@ const userDataValidation = celebrate({
   body: Joi.object().keys({
     name: Joi.string().min(2).max(30),
     about: Joi.string().min(2).max(30),
-    avatar: Joi.string(),
+    avatar: Joi.string().pattern(linkRegExp),
   }),
 });
 
 const userAvatarValidation = celebrate({
   body: Joi.object().keys({
-    avatar: Joi.string().alphanum(),
+    avatar: Joi.string().pattern(linkRegExp),
   }),
 });
 
@@ -43,4 +46,5 @@ module.exports = {
   userIdValidation,
   userDataValidation,
   userAvatarValidation,
+  idSchema,
 };

@@ -8,7 +8,6 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/user');
 const { NotFoundError } = require('../utils/errors/not-found-error');
 const { ConflictError } = require('../utils/errors/conflict-error');
-const { UnauthorizedError } = require('../utils/errors/unauthorized-error');
 const { CastError } = require('../utils/errors/cast-error');
 const { updateUser } = require('../utils/update-user');
 // Дефолтное значение NODE_ENV и JWT_SECRET для прохождения автотестов, т.к. они не видят .env
@@ -31,8 +30,6 @@ module.exports.getUserById = async (req, res, next) => {
   } catch (e) {
     if (e instanceof mongoose.Error.CastError) {
       next(new CastError({ message: e.message }));
-    } if (e instanceof NotFoundError) {
-      res.status(e.statusCode).send({ message: e.message });
     } else {
       next(e);
     }
@@ -125,10 +122,6 @@ module.exports.login = async (req, res, next) => {
       })
       .send({ message: 'Авторизация прошла успешно' });
   } catch (e) {
-    if (e instanceof UnauthorizedError) {
-      next(e);
-    } else {
-      next(e);
-    }
+    next(e);
   }
 };

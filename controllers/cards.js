@@ -1,5 +1,6 @@
 const {
   HTTP_STATUS_OK,
+  HTTP_STATUS_CREATED,
 } = require('http2').constants;
 const mongoose = require('mongoose');
 const Card = require('../models/card');
@@ -21,7 +22,7 @@ module.exports.createCard = async (req, res, next) => {
     const owner = req.user._id;
     const { name, link } = req.body;
     const card = await Card.create({ name, link, owner });
-    res.send(card);
+    res.status(HTTP_STATUS_CREATED).send(card);
   } catch (e) {
     if (e instanceof mongoose.Error.ValidationError) {
       next(new CastError({ message: e.message }));
@@ -39,16 +40,12 @@ module.exports.deleteCardById = async (req, res, next) => {
     } else if (card.owner.toString() !== req.user._id) {
       throw new ForbiddenError({ message: 'Нельзя удалить карточку другого пользователя' });
     } else {
-      await Card.findByIdAndDelete(req.params.id);
+      await Card.deleteOne(card);
       res.send({ message: 'Карточка успешно удалена' });
     }
   } catch (e) {
     if (e instanceof mongoose.Error.CastError) {
       next(new CastError({ message: e.message }));
-    } else if (e instanceof NotFoundError) {
-      next(e);
-    } else if (e instanceof ForbiddenError) {
-      next(e);
     } else {
       next(e);
     }
@@ -70,8 +67,6 @@ module.exports.likeCard = async (req, res, next) => {
   } catch (e) {
     if (e instanceof mongoose.Error.CastError) {
       next(new CastError({ message: e.message }));
-    } else if (e instanceof NotFoundError) {
-      next(e);
     } else {
       next(e);
     }
@@ -93,8 +88,6 @@ module.exports.dislikeCard = async (req, res, next) => {
   } catch (e) {
     if (e instanceof mongoose.Error.CastError) {
       next(new CastError({ message: e.message }));
-    } else if (e instanceof NotFoundError) {
-      next(e);
     } else {
       next(e);
     }
